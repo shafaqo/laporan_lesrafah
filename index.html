@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Les Rafah - Manajemen Lengkap</title>
+    <title>Sistem Les Rafah - Online</title>
     
-    <!-- External Libraries -->
+    <!-- Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     
-    <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 
     <style>
@@ -19,62 +18,61 @@
         .show { display: block; }
         .nav-item.active { color: #f97316; font-weight: 800; }
         .nav-item { color: #94a3b8; transition: all 0.2s; }
-        
-        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        
-        /* Animation */
         .fade-in { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
-        /* Tab Active State */
-        .tab-btn.active { border-bottom: 2px solid #f97316; color: #f97316; font-weight: 700; }
-        .tab-btn { color: #64748b; font-weight: 600; }
+        .loader { border: 3px solid #f3f3f3; border-radius: 50%; border-top: 3px solid #f97316; width: 20px; height: 20px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* Disabled State */
+        .loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.8); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 h-screen flex flex-col overflow-hidden">
+
+    <!-- LOADING OVERLAY -->
+    <div id="globalLoader" class="loading-overlay hidden">
+        <div class="loader w-10 h-10 mb-4"></div>
+        <p class="text-sm font-bold text-slate-600 blink" id="loadingText">Menghubungkan ke Database...</p>
+    </div>
 
     <!-- HEADER -->
     <header class="bg-white h-16 border-b border-slate-200 flex items-center justify-between px-4 z-20 shrink-0 shadow-sm">
         <div class="flex items-center gap-2">
             <div class="bg-orange-100 p-2 rounded-lg text-orange-600">
-                <i data-lucide="layout-grid" size="20"></i>
+                <i data-lucide="cloud-lightning" size="20"></i>
             </div>
             <div>
                 <h1 class="text-lg font-extrabold text-slate-800 leading-tight">Les Rafah</h1>
-                <p class="text-[10px] text-slate-500 font-bold tracking-wide">Sistem Manajemen Terpadu</p>
+                <p class="text-[10px] text-green-600 font-bold tracking-wide flex items-center gap-1">
+                    <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> Online Mode
+                </p>
             </div>
         </div>
         <div class="flex items-center gap-3">
-             <div class="text-right">
-                <p class="text-[10px] text-slate-400 uppercase font-bold">Admin</p>
-                <p class="text-xs font-bold text-sky-600">Owner</p>
-            </div>
-            <div class="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center">
-                <i data-lucide="user" size="16" class="text-slate-500"></i>
-            </div>
+             <button onclick="fetchDataFromServer()" class="bg-slate-100 p-2 rounded-full hover:bg-slate-200 text-slate-500">
+                <i data-lucide="refresh-cw" size="16"></i>
+             </button>
         </div>
     </header>
 
-    <!-- MAIN CONTENT -->
+    <!-- CONTENT -->
     <main class="flex-1 overflow-y-auto overflow-x-hidden p-4 pb-24 bg-slate-50" id="main-content">
         
-        <!-- 1. DASHBOARD -->
+        <!-- DASHBOARD -->
         <section id="dashboard" class="fade-in">
-            <!-- Stats Row -->
             <div class="grid grid-cols-2 gap-3 mb-6">
                 <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
                     <p class="text-xs text-slate-400 font-bold uppercase">Siswa Aktif</p>
                     <div class="flex items-end gap-2 mt-1">
-                        <h3 class="text-3xl font-extrabold text-sky-600" id="dashTotalStudents">0</h3>
+                        <h3 class="text-3xl font-extrabold text-sky-600" id="dashTotalStudents">-</h3>
                         <span class="text-[10px] text-slate-400 mb-1">Orang</span>
                     </div>
                 </div>
                 <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
                     <p class="text-xs text-slate-400 font-bold uppercase">Revenue (YTD)</p>
-                    <h3 class="text-xl font-extrabold text-green-600 mt-1 truncate" id="dashTotalRevenue">Rp 0</h3>
+                    <h3 class="text-xl font-extrabold text-green-600 mt-1 truncate" id="dashTotalRevenue">-</h3>
                     <p class="text-[10px] text-slate-400 mt-1">Total Pemasukan</p>
                 </div>
             </div>
@@ -82,13 +80,13 @@
             <!-- Charts -->
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mb-6">
                 <h3 class="font-bold text-slate-700 mb-4 flex items-center gap-2 text-sm">
-                    <i data-lucide="trending-up" size="16" class="text-green-500"></i> Tren Pemasukan Bulanan
+                    <i data-lucide="trending-up" size="16" class="text-green-500"></i> Tren Pemasukan
                 </h3>
                 <div class="h-48 w-full">
                     <canvas id="revenueLineChart"></canvas>
                 </div>
             </div>
-
+            
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mb-6">
                 <h3 class="font-bold text-slate-700 mb-4 flex items-center gap-2 text-sm">
                     <i data-lucide="pie-chart" size="16" class="text-orange-500"></i> Sebaran Program
@@ -99,7 +97,7 @@
             </div>
         </section>
 
-        <!-- 2. PENDAFTARAN -->
+        <!-- REGISTRATION -->
         <section id="registration" class="hidden fade-in">
              <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                 <div class="bg-orange-50 p-4 border-b border-orange-100">
@@ -109,11 +107,10 @@
                 </div>
                 <div class="p-5">
                     <form onsubmit="handleRegistration(event)" class="space-y-4">
-                        <!-- Data Diri -->
                         <div class="space-y-3">
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nama Lengkap</label>
-                                <input type="text" id="regName" required class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-sm" placeholder="Nama Siswa">
+                                <input type="text" id="regName" required class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm" placeholder="Nama Siswa">
                             </div>
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
@@ -126,8 +123,6 @@
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Data Akademik -->
                         <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-3">
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Pilih Program</label>
@@ -141,14 +136,13 @@
                                 <input type="date" id="regDate" required class="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none text-sm">
                             </div>
                         </div>
-
-                        <button type="submit" class="w-full bg-orange-500 text-white font-bold py-3 rounded-xl shadow-lg mt-2 text-sm">Simpan Data Siswa</button>
+                        <button type="submit" class="w-full bg-orange-500 text-white font-bold py-3 rounded-xl shadow-lg mt-2 text-sm hover:bg-orange-600 transition">Simpan Data Siswa</button>
                     </form>
                 </div>
             </div>
         </section>
 
-        <!-- 3. AKADEMIK (LIST SISWA) -->
+        <!-- ACADEMIC LIST -->
         <section id="academic" class="hidden fade-in space-y-4">
              <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 sticky top-0 z-10">
                 <div class="relative">
@@ -156,334 +150,297 @@
                     <input type="text" id="searchStudent" oninput="renderStudentList()" class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 text-sm bg-slate-50 focus:bg-white transition outline-none" placeholder="Cari nama siswa...">
                 </div>
             </div>
-            
-            <!-- List Container -->
-            <div id="studentListContainer" class="space-y-3 pb-10">
-                <!-- List items via JS -->
-            </div>
+            <div id="studentListContainer" class="space-y-3 pb-10"></div>
         </section>
 
-        <!-- 4. KEUANGAN & PENGELUARAN (TABEL) -->
+        <!-- FINANCE -->
         <section id="investor" class="hidden fade-in space-y-4">
-            
-            <!-- Summary Card -->
+            <!-- Summary -->
             <div class="bg-slate-800 text-white p-6 rounded-3xl shadow-xl">
                 <div class="flex justify-between items-start">
                     <div>
-                        <p class="text-xs text-slate-400 font-bold uppercase mb-1">Net Profit (Laba Bersih)</p>
+                        <p class="text-xs text-slate-400 font-bold uppercase mb-1">Net Profit (Real)</p>
                         <h2 class="text-3xl font-extrabold text-green-400" id="rptNetProfit">Rp 0</h2>
                     </div>
-                    <div class="bg-slate-700 p-2 rounded-lg">
-                        <i data-lucide="wallet" size="24" class="text-slate-300"></i>
-                    </div>
+                    <div class="bg-slate-700 p-2 rounded-lg"><i data-lucide="wallet" size="24" class="text-slate-300"></i></div>
                 </div>
-                
                 <div class="grid grid-cols-2 gap-4 mt-6 pt-4 border-t border-slate-700">
-                    <div>
-                        <span class="text-[10px] text-slate-400 uppercase block">Total Pemasukan</span>
-                        <span class="font-bold text-white" id="rptTotalRevenue">Rp 0</span>
-                    </div>
-                    <div>
-                        <span class="text-[10px] text-slate-400 uppercase block">Total Pengeluaran</span>
-                        <span class="font-bold text-red-400" id="rptTotalExpense">Rp 0</span>
-                    </div>
+                    <div><span class="text-[10px] text-slate-400 uppercase block">Total Pemasukan</span><span class="font-bold text-white" id="rptTotalRevenue">Rp 0</span></div>
+                    <div><span class="text-[10px] text-slate-400 uppercase block">Total Pengeluaran</span><span class="font-bold text-red-400" id="rptTotalExpense">Rp 0</span></div>
                 </div>
-
-                <!-- Split Profit Info -->
                 <div class="mt-4 bg-slate-900/50 p-3 rounded-xl border border-slate-700/50">
-                    <p class="text-[10px] text-slate-500 font-bold uppercase mb-2">Estimasi Bagi Hasil (Dari Net Profit)</p>
+                    <p class="text-[10px] text-slate-500 font-bold uppercase mb-2">Bagi Hasil (55:45)</p>
                     <div class="flex justify-between text-xs">
-                        <span class="text-slate-300">Investor (55%): <span class="font-bold text-green-400" id="shareInvestor">Rp 0</span></span>
-                        <span class="text-slate-300">Pengelola (45%): <span class="font-bold text-sky-400" id="shareOperator">Rp 0</span></span>
+                        <span class="text-slate-300">Inv: <span class="font-bold text-green-400" id="shareInvestor">Rp 0</span></span>
+                        <span class="text-slate-300">Ops: <span class="font-bold text-sky-400" id="shareOperator">Rp 0</span></span>
                     </div>
                 </div>
             </div>
 
-            <!-- Form Input Pengeluaran -->
+            <!-- Expense Form -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-                <div class="flex items-center gap-2 mb-4 text-red-600">
-                    <i data-lucide="minus-circle" size="18"></i>
-                    <h3 class="font-bold text-sm">Catat Pengeluaran Operasional / Gaji</h3>
-                </div>
+                <div class="flex items-center gap-2 mb-4 text-red-600"><i data-lucide="minus-circle" size="18"></i><h3 class="font-bold text-sm">Catat Pengeluaran</h3></div>
                 <form onsubmit="handleAddExpense(event)" class="space-y-3">
                     <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="text-[10px] font-bold text-slate-400 uppercase">Kategori</label>
-                            <select id="expCat" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50 outline-none">
-                                <option value="Gaji">Gaji Guru/Mentor</option>
-                                <option value="Operasional">Listrik/Air/Internet</option>
-                                <option value="Perlengkapan">ATK/Modul/Buku</option>
-                                <option value="Marketing">Iklan/Promo</option>
-                                <option value="Lainnya">Lainnya</option>
-                            </select>
-                        </div>
-                        <div>
-                             <label class="text-[10px] font-bold text-slate-400 uppercase">Tanggal</label>
-                             <input type="date" id="expDate" required class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50 outline-none">
-                        </div>
+                        <select id="expCat" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50 outline-none"><option value="Gaji">Gaji</option><option value="Operasional">Operasional</option><option value="Lainnya">Lainnya</option></select>
+                        <input type="date" id="expDate" required class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50 outline-none">
                     </div>
-                    
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase">Keterangan</label>
-                        <input type="text" id="expDesc" required placeholder="Contoh: Gaji 3 Mentor @1.5jt" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50 outline-none">
+                    <input type="text" id="expDesc" required placeholder="Keterangan..." class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50 outline-none">
+                    <div class="relative">
+                        <span class="absolute left-3 top-2 text-slate-400 text-xs">Rp</span>
+                        <input type="number" id="expAmount" required class="w-full pl-8 p-2 border border-slate-200 rounded-lg text-sm bg-slate-50 outline-none font-bold">
                     </div>
-
-                    <div class="grid grid-cols-3 gap-3">
-                        <div class="col-span-1">
-                             <label class="text-[10px] font-bold text-slate-400 uppercase">Jml (Qty)</label>
-                             <input type="number" id="expQty" value="1" min="1" oninput="calcExpTotal()" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50 outline-none text-center">
-                        </div>
-                         <div class="col-span-2">
-                             <label class="text-[10px] font-bold text-slate-400 uppercase">Nominal Satuan</label>
-                             <div class="relative">
-                                 <span class="absolute left-3 top-2 text-slate-400 text-xs">Rp</span>
-                                 <input type="number" id="expPrice" required oninput="calcExpTotal()" class="w-full pl-8 p-2 border border-slate-200 rounded-lg text-sm bg-slate-50 outline-none font-bold">
-                             </div>
-                        </div>
-                    </div>
-                    
-                    <div class="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-100">
-                        <span class="text-xs text-slate-500 font-bold">Total:</span>
-                        <span class="text-sm font-extrabold text-red-600" id="expTotalDisplay">Rp 0</span>
-                    </div>
-
-                    <button class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded-lg text-sm shadow-md transition">Simpan Pengeluaran</button>
+                    <button class="w-full bg-red-500 text-white font-bold py-2 rounded-lg text-sm shadow-md hover:bg-red-600">Simpan Pengeluaran</button>
                 </form>
             </div>
 
-            <!-- Tabel Riwayat Pengeluaran -->
+            <!-- Logs -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <div class="p-3 border-b border-slate-100 bg-slate-50/50">
-                    <h3 class="font-bold text-xs text-slate-700 uppercase tracking-wide">Riwayat Pengeluaran</h3>
-                </div>
-                <div class="overflow-x-auto max-h-60 overflow-y-auto">
-                    <table class="w-full text-xs text-left">
-                        <thead class="text-slate-400 bg-white border-b border-slate-100 sticky top-0">
-                            <tr>
-                                <th class="p-3">Tgl</th>
-                                <th class="p-3">Ket</th>
-                                <th class="p-3 text-right">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody id="expenseTableBody" class="text-slate-600 divide-y divide-slate-50"></tbody>
-                    </table>
-                </div>
+                <div class="p-3 border-b border-slate-100 bg-slate-50/50"><h3 class="font-bold text-xs text-slate-700 uppercase">Riwayat Pengeluaran</h3></div>
+                <div class="overflow-x-auto max-h-60 overflow-y-auto"><table class="w-full text-xs text-left"><tbody id="expenseTableBody" class="text-slate-600 divide-y divide-slate-50"></tbody></table></div>
             </div>
-
-             <!-- Tabel Pemasukan -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <div class="p-3 border-b border-slate-100 bg-slate-50/50">
-                    <h3 class="font-bold text-xs text-slate-700 uppercase tracking-wide">Riwayat Pemasukan</h3>
-                </div>
-                <div class="overflow-x-auto max-h-60 overflow-y-auto">
-                    <table class="w-full text-xs text-left">
-                        <thead class="text-slate-400 bg-white border-b border-slate-100 sticky top-0">
-                            <tr>
-                                <th class="p-3">Tgl</th>
-                                <th class="p-3">Siswa</th>
-                                <th class="p-3 text-right">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody id="transactionTableBody" class="text-slate-600 divide-y divide-slate-50"></tbody>
-                    </table>
-                </div>
+                <div class="p-3 border-b border-slate-100 bg-slate-50/50"><h3 class="font-bold text-xs text-slate-700 uppercase">Riwayat Pemasukan</h3></div>
+                <div class="overflow-x-auto max-h-60 overflow-y-auto"><table class="w-full text-xs text-left"><tbody id="transactionTableBody" class="text-slate-600 divide-y divide-slate-50"></tbody></table></div>
             </div>
         </section>
-
     </main>
 
-    <!-- NAVIGATION BAR -->
+    <!-- NAVIGATION -->
     <nav class="bg-white border-t border-slate-200 h-20 fixed bottom-0 w-full z-30 flex justify-around items-center px-2 pb-2 shadow-[0_-5px_10px_rgba(0,0,0,0.02)]">
-        <button onclick="navigate('dashboard')" class="nav-item active flex flex-col items-center justify-center w-full h-full pt-2" id="nav-dashboard">
-            <i data-lucide="layout-dashboard" size="22"></i>
-            <span class="text-[10px] mt-1 font-bold">Dash</span>
-        </button>
-        <button onclick="navigate('academic')" class="nav-item flex flex-col items-center justify-center w-full h-full pt-2" id="nav-academic">
-            <i data-lucide="users" size="22"></i>
-            <span class="text-[10px] mt-1 font-bold">Siswa</span>
-        </button>
-        <div class="relative -top-6">
-            <button onclick="navigate('registration')" class="bg-orange-500 hover:bg-orange-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg shadow-orange-200 border-4 border-slate-50 transition transform active:scale-95">
-                <i data-lucide="plus" size="28"></i>
-            </button>
-        </div>
-        <button onclick="navigate('investor')" class="nav-item flex flex-col items-center justify-center w-full h-full pt-2" id="nav-investor">
-            <i data-lucide="wallet" size="22"></i>
-            <span class="text-[10px] mt-1 font-bold">Keuangan</span>
-        </button>
+        <button onclick="navigate('dashboard')" class="nav-item active flex flex-col items-center justify-center w-full h-full pt-2" id="nav-dashboard"><i data-lucide="layout-dashboard" size="22"></i><span class="text-[10px] mt-1 font-bold">Dash</span></button>
+        <button onclick="navigate('academic')" class="nav-item flex flex-col items-center justify-center w-full h-full pt-2" id="nav-academic"><i data-lucide="users" size="22"></i><span class="text-[10px] mt-1 font-bold">Siswa</span></button>
+        <div class="relative -top-6"><button onclick="navigate('registration')" class="bg-orange-500 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg border-4 border-slate-50 active:scale-95"><i data-lucide="plus" size="28"></i></button></div>
+        <button onclick="navigate('investor')" class="nav-item flex flex-col items-center justify-center w-full h-full pt-2" id="nav-investor"><i data-lucide="wallet" size="22"></i><span class="text-[10px] mt-1 font-bold">Keuangan</span></button>
     </nav>
 
-    <!-- MODAL DETAIL SISWA (FULLSCREEN / SHEET) -->
+    <!-- MODAL DETAIL SISWA -->
     <div id="studentModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-end sm:items-center justify-center">
         <div class="bg-white w-full sm:w-[450px] h-[90vh] sm:h-[80vh] sm:rounded-2xl rounded-t-3xl p-0 flex flex-col animate-[fadeIn_0.2s_ease-out] overflow-hidden">
-            
-            <!-- Modal Header -->
             <div class="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-start shrink-0">
-                <div>
-                    <h3 class="font-extrabold text-lg text-slate-800" id="modalTitle">Nama Siswa</h3>
-                    <p class="text-xs text-slate-500" id="modalSubtitle">Program • Status</p>
-                </div>
-                <button onclick="closeModal()" class="bg-white p-2 rounded-full border border-slate-200 text-slate-400 hover:text-slate-800"><i data-lucide="x" size="18"></i></button>
+                <div><h3 class="font-extrabold text-lg text-slate-800" id="modalTitle">...</h3><p class="text-xs text-slate-500" id="modalSubtitle">...</p></div>
+                <button onclick="closeModal()" class="bg-white p-2 rounded-full border border-slate-200"><i data-lucide="x" size="18"></i></button>
             </div>
-
-            <!-- Tabs -->
             <div class="flex border-b border-slate-200 bg-white shrink-0">
                 <button onclick="switchTab('profile')" id="tab-profile" class="tab-btn active flex-1 py-3 text-sm text-center">Profil</button>
                 <button onclick="switchTab('attendance')" id="tab-attendance" class="tab-btn flex-1 py-3 text-sm text-center">Absensi</button>
                 <button onclick="switchTab('payment')" id="tab-payment" class="tab-btn flex-1 py-3 text-sm text-center">Pembayaran</button>
             </div>
-
-            <!-- Tab Contents (Scrollable) -->
             <div class="flex-1 overflow-y-auto p-5 bg-slate-50">
-                
-                <!-- 1. TAB PROFIL -->
+                <!-- Tab Profil -->
                 <div id="content-profile" class="space-y-4">
                     <div class="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
                         <label class="block text-xs font-bold text-slate-400 uppercase">Status Siswa</label>
-                        <select id="editStatus" onchange="saveStudentChanges()" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 outline-none">
-                            <option value="Aktif">✅ Aktif</option>
-                            <option value="Berhenti">🛑 Berhenti / Keluar</option>
-                        </select>
-                        <p class="text-[10px] text-slate-400 italic">Siswa "Berhenti" tidak dihitung di statistik aktif.</p>
+                        <select id="editStatus" onchange="saveStudentChanges()" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none"><option value="Aktif">✅ Aktif</option><option value="Berhenti">🛑 Berhenti</option></select>
                     </div>
-
-                    <div class="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
-                        <label class="block text-xs font-bold text-slate-400 uppercase">Ganti Program</label>
-                        <select id="editProgram" onchange="saveStudentChanges()" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 outline-none">
-                            <!-- Options via JS -->
-                        </select>
-                        <p class="text-[10px] text-slate-400 italic">Mengganti program akan menyesuaikan nominal pembayaran berikutnya.</p>
-                    </div>
-                    
                     <div class="bg-white p-4 rounded-xl border border-slate-200">
                         <h4 class="text-xs font-bold text-slate-400 uppercase mb-2">Data Diri</h4>
-                        <div class="grid grid-cols-2 gap-y-2 text-sm">
-                            <span class="text-slate-500">Tgl Lahir:</span>
-                            <span class="font-bold text-slate-700 text-right" id="viewBirth"></span>
-                            <span class="text-slate-500">Wali:</span>
-                            <span class="font-bold text-slate-700 text-right" id="viewParent"></span>
-                            <span class="text-slate-500">Gabung:</span>
-                            <span class="font-bold text-slate-700 text-right" id="viewJoin"></span>
-                        </div>
+                        <div class="grid grid-cols-2 gap-y-2 text-sm"><span class="text-slate-500">Tgl Lahir:</span><span class="font-bold text-right" id="viewBirth">-</span><span class="text-slate-500">Wali:</span><span class="font-bold text-right" id="viewParent">-</span><span class="text-slate-500">Gabung:</span><span class="font-bold text-right" id="viewJoin">-</span></div>
                     </div>
                 </div>
-
-                <!-- 2. TAB ABSENSI -->
+                <!-- Tab Absensi -->
                 <div id="content-attendance" class="hidden space-y-4">
                     <div class="bg-white p-4 rounded-xl border border-slate-200">
-                        <h4 class="text-sm font-bold text-slate-700 mb-3">Input Kehadiran Hari Ini</h4>
+                        <h4 class="text-sm font-bold text-slate-700 mb-3">Input Kehadiran</h4>
                         <form onsubmit="submitAttendance(event)" class="flex gap-2">
-                            <select id="attStatus" class="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm">
-                                <option value="Hadir">Hadir</option>
-                                <option value="Sakit">Sakit</option>
-                                <option value="Izin">Izin</option>
-                                <option value="Alpha">Alpha</option>
-                            </select>
+                            <select id="attStatus" class="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"><option value="Hadir">Hadir</option><option value="Sakit">Sakit</option><option value="Izin">Izin</option><option value="Alpha">Alpha</option></select>
                             <input type="date" id="attDate" required class="w-1/3 p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm">
                             <button class="bg-sky-500 text-white p-2 rounded-lg"><i data-lucide="check" size="18"></i></button>
                         </form>
                     </div>
-
-                    <div>
-                        <h4 class="text-xs font-bold text-slate-400 uppercase mb-2">Riwayat Kehadiran</h4>
-                        <div id="attendanceList" class="space-y-2">
-                            <!-- Logs via JS -->
-                        </div>
-                    </div>
+                    <div id="attendanceList" class="space-y-2"></div>
                 </div>
-
-                <!-- 3. TAB PEMBAYARAN -->
+                <!-- Tab Pembayaran -->
                 <div id="content-payment" class="hidden space-y-4">
                     <div class="bg-white p-4 rounded-xl border border-slate-200">
                         <h4 class="text-sm font-bold text-slate-700 mb-3">Input SPP / Pembayaran</h4>
                         <form onsubmit="submitPayment(event)" class="space-y-3">
                             <div class="flex gap-2">
                                 <input type="date" id="payDate" required class="w-1/3 p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm">
-                                <div class="flex-1 relative">
-                                    <span class="absolute left-3 top-2 text-slate-400 text-sm">Rp</span>
-                                    <input type="number" id="payAmount" required class="w-full pl-8 p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-700">
-                                </div>
+                                <div class="flex-1 relative"><span class="absolute left-3 top-2 text-slate-400 text-sm">Rp</span><input type="number" id="payAmount" required class="w-full pl-8 p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold"></div>
                             </div>
                             <input type="text" id="payNote" placeholder="Catatan (e.g., SPP Maret)" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm">
                             <button class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 rounded-lg text-sm shadow-sm transition">Terima Pembayaran</button>
                         </form>
                     </div>
-
-                    <div>
-                        <h4 class="text-xs font-bold text-slate-400 uppercase mb-2">Riwayat Transaksi</h4>
-                        <div id="paymentList" class="space-y-2 max-h-48 overflow-y-auto">
-                            <!-- Logs via JS -->
-                        </div>
-                    </div>
+                    <div id="paymentList" class="space-y-2 max-h-48 overflow-y-auto"></div>
                 </div>
-
             </div>
         </div>
     </div>
 
     <!-- JAVASCRIPT LOGIC -->
     <script>
-        // --- KONFIGURASI API (GOOGLE APPS SCRIPT) ---
-        // Masukkan URL Deployment Web App Anda di bawah ini
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx3XED-KWZB6R5EdEgLSxPV2GFYvtHkBTZqEduFyWbrvpN9k-sRzp3SJIjhVQacsr65/exec";
+        // === CONFIG ===
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx3XED-KWZB6R5EdEgLSxPV2GFYvtHkBTZqEduFyWbrvpN9k-sRzp3SJIjhVQacsr65/exec"; // Ganti ini!
+        const PRICES = {"Calistung": 150000, "Mengaji": 100000, "Matematika SD": 200000, "Bahasa Inggris": 250000, "Coding": 300000};
 
-        // --- CONFIG ---
-        const PRICES = {
-            "Calistung": 150000,
-            "Mengaji": 100000, 
-            "Matematika SD": 200000,
-            "Bahasa Inggris": 250000,
-            "Coding": 300000,
-            "Persiapan Kuliah": 350000
-        };
-
-        // --- STATE ---
-        let STUDENTS = [
-            { 
-                id: "S1", name: "Rafathar", birth: "2015-08-15", parent: "Raffi", 
-                program: "Coding", joinDate: "2026-01-10", status: "Aktif", 
-                attendance: [{date: "2026-01-12", status: "Hadir"}], 
-                payments: [{ date: "2026-01-10", amount: 300000, note: "Pendaftaran" }]
-            },
-            { 
-                id: "S2", name: "Thalia", birth: "2016-02-01", parent: "Ruben", 
-                program: "Matematika SD", joinDate: "2026-02-20", status: "Berhenti", 
-                attendance: [], 
-                payments: [{ date: "2026-02-20", amount: 180000, note: "SPP Feb" }]
-            }
-        ];
-
-        let EXPENSES = [
-            { id: "E1", date: "2026-01-25", category: "Gaji", desc: "Gaji 2 Mentor Coding", amount: 3000000 },
-            { id: "E2", date: "2026-02-05", category: "Operasional", desc: "Listrik & Air", amount: 450000 }
-        ];
-
+        // === STATE (Dimulai Kosong) ===
+        let STUDENTS = [];
+        let EXPENSES = [];
         let selectedStudentId = null;
         let charts = {};
 
-        // --- INIT ---
+        // === INIT ===
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
             initFormOptions();
-            updateDashboard();
+            
+            // Auto fetch if URL is set
+            if(GOOGLE_SCRIPT_URL !== "MASUKKAN_URL_DEPLOYMENT_DISINI") {
+                fetchDataFromServer();
+            } else {
+                alert("PENTING: Anda belum memasukkan URL Google Script di kode HTML. Aplikasi masih kosong.");
+            }
         });
 
-        function initFormOptions() {
-            const selects = [document.getElementById('regProgram'), document.getElementById('editProgram')];
-            const options = [...Object.keys(PRICES), "Lainnya"];
-            
-            selects.forEach(sel => {
-                sel.innerHTML = options.map(p => `<option value="${p}">${p}</option>`).join('');
-            });
-            
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('regDate').value = today;
-            document.getElementById('attDate').value = today;
-            document.getElementById('payDate').value = today;
-            document.getElementById('expDate').value = today;
+        // === API HANDLER ===
+        async function fetchDataFromServer() {
+            showLoader("Mengambil data terbaru...");
+            try {
+                // Tambahkan parameter ?action=getData di URL untuk memanggil fungsi doGet
+                const response = await fetch(GOOGLE_SCRIPT_URL + "?action=getData");
+                const data = await response.json();
+                
+                if(data.status === "empty") {
+                    // Jika kosong, inisialisasi sheet
+                    await fetch(GOOGLE_SCRIPT_URL + "?action=init");
+                    hideLoader();
+                    alert("Database baru berhasil dibuat! Silakan refresh.");
+                    return;
+                }
+
+                // Update State
+                STUDENTS = data.students || [];
+                EXPENSES = data.expenses || [];
+                
+                // Refresh UI
+                updateDashboard();
+                renderStudentList();
+                renderFinancialLogs();
+                hideLoader();
+
+            } catch (err) {
+                hideLoader();
+                console.error(err);
+                alert("Gagal mengambil data. Cek koneksi atau URL Script.");
+            }
         }
 
-        // --- NAVIGATION ---
+        async function sendData(payload) {
+            showLoader("Menyimpan data...");
+            try {
+                // Gunakan POST dengan mode 'no-cors' jika mengalami masalah CORS, 
+                // tapi idealnya return JSON dari GAS untuk konfirmasi.
+                // Disini kita gunakan fetch standard.
+                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                
+                if(result.status === "success") {
+                    await fetchDataFromServer(); // Refresh data agar sinkron
+                } else {
+                    alert("Error: " + result.msg);
+                    hideLoader();
+                }
+            } catch (err) {
+                hideLoader();
+                console.error(err);
+                alert("Terjadi kesalahan koneksi.");
+            }
+        }
+
+        // === ACTIONS ===
+        function handleRegistration(e) {
+            e.preventDefault();
+            let prog = document.getElementById('regProgram').value;
+            if(prog === 'Lainnya') prog = document.getElementById('regProgramOther').value;
+
+            const payload = {
+                action: "register_student",
+                id: "S-" + Date.now(),
+                name: document.getElementById('regName').value,
+                birth: document.getElementById('regBirth').value,
+                parent: document.getElementById('regParent').value,
+                program: prog,
+                joinDate: document.getElementById('regDate').value
+            };
+            
+            sendData(payload);
+            e.target.reset();
+            navigate('academic');
+        }
+
+        function submitPayment(e) {
+            e.preventDefault();
+            const payload = {
+                action: "add_transaction",
+                type: "IN",
+                category: "SPP",
+                date: document.getElementById('payDate').value,
+                amount: document.getElementById('payAmount').value,
+                desc: document.getElementById('payNote').value,
+                studentId: selectedStudentId
+            };
+            sendData(payload);
+            document.getElementById('payAmount').value = '';
+            document.getElementById('payNote').value = '';
+        }
+
+        function handleAddExpense(e) {
+            e.preventDefault();
+            const payload = {
+                action: "add_transaction",
+                type: "OUT",
+                category: document.getElementById('expCat').value,
+                date: document.getElementById('expDate').value,
+                desc: document.getElementById('expDesc').value,
+                amount: document.getElementById('expAmount').value
+            };
+            sendData(payload);
+            e.target.reset();
+        }
+
+        function submitAttendance(e) {
+            e.preventDefault();
+            const payload = {
+                action: "add_attendance",
+                date: document.getElementById('attDate').value,
+                studentId: selectedStudentId,
+                status: document.getElementById('attStatus').value
+            };
+            sendData(payload);
+        }
+
+        function saveStudentChanges() {
+            const payload = {
+                action: "update_student_status",
+                id: selectedStudentId,
+                status: document.getElementById('editStatus').value
+            };
+            sendData(payload);
+        }
+
+        // === UI HELPERS ===
+        function showLoader(text) {
+            document.getElementById('loadingText').innerText = text;
+            document.getElementById('globalLoader').classList.remove('hidden');
+        }
+        function hideLoader() {
+            document.getElementById('globalLoader').classList.add('hidden');
+        }
+
+        function initFormOptions() {
+            const select = document.getElementById('regProgram');
+            const options = [...Object.keys(PRICES), "Lainnya"];
+            select.innerHTML = options.map(p => `<option value="${p}">${p}</option>`).join('');
+            
+            const today = new Date().toISOString().split('T')[0];
+            ['regDate', 'attDate', 'payDate', 'expDate'].forEach(id => document.getElementById(id).value = today);
+        }
+
         function navigate(pageId) {
             ['dashboard', 'registration', 'academic', 'investor'].forEach(id => {
                 document.getElementById(id).classList.add('hidden');
@@ -493,379 +450,96 @@
             document.getElementById(pageId).classList.remove('hidden');
             document.getElementById(`nav-${pageId}`)?.classList.add('active');
             document.getElementById(`nav-${pageId}`)?.classList.replace('text-slate-400', 'text-orange-500');
-
-            if(pageId === 'academic') renderStudentList();
-            if(pageId === 'investor') renderFinancialLogs();
-            if(pageId === 'dashboard') updateDashboard();
-        }
-
-        // --- EXPENSE LOGIC ---
-        function calcExpTotal() {
-            const qty = document.getElementById('expQty').value || 0;
-            const price = document.getElementById('expPrice').value || 0;
-            const total = qty * price;
-            document.getElementById('expTotalDisplay').innerText = "Rp " + total.toLocaleString('id-ID');
-        }
-
-        function handleAddExpense(e) {
-            e.preventDefault();
-            const cat = document.getElementById('expCat').value;
-            const date = document.getElementById('expDate').value;
-            let desc = document.getElementById('expDesc').value;
-            const qty = parseInt(document.getElementById('expQty').value);
-            const price = parseInt(document.getElementById('expPrice').value);
-            const total = qty * price;
-
-            // Append Qty info to desc if > 1
-            if(qty > 1) {
-                desc += ` (${qty} x Rp ${price.toLocaleString()})`;
-            }
-
-            EXPENSES.unshift({
-                id: "E" + Date.now(),
-                date, category: cat, desc, amount: total
-            });
-
-            alert("Pengeluaran Disimpan");
-            e.target.reset();
-            document.getElementById('expQty').value = 1;
-            document.getElementById('expTotalDisplay').innerText = "Rp 0";
             
-            updateDashboard(); // Recalculate Profit
-            renderFinancialLogs();
+            if(pageId === 'academic') renderStudentList(); // Re-render to ensure fresh data
         }
 
-        // --- REGISTRATION LOGIC ---
-        function toggleOtherProgram(selectEl) {
-            const otherInput = document.getElementById('regProgramOther');
-            if(selectEl.value === 'Lainnya') {
-                otherInput.classList.remove('hidden');
-                otherInput.required = true;
-            } else {
-                otherInput.classList.add('hidden');
-                otherInput.required = false;
-            }
+        function toggleOtherProgram(el) {
+            document.getElementById('regProgramOther').classList.toggle('hidden', el.value !== 'Lainnya');
         }
 
-        function handleRegistration(e) {
-            e.preventDefault();
-            const name = document.getElementById('regName').value;
-            const birth = document.getElementById('regBirth').value;
-            const parent = document.getElementById('regParent').value;
-            let prog = document.getElementById('regProgram').value;
-            if(prog === 'Lainnya') prog = document.getElementById('regProgramOther').value;
-            const join = document.getElementById('regDate').value;
-
-            STUDENTS.push({
-                id: "S" + Date.now(),
-                name, birth, parent, program: prog, joinDate: join,
-                status: "Aktif",
-                attendance: [],
-                payments: []
-            });
-
-            alert("✅ Siswa Berhasil Disimpan!");
-            e.target.reset();
-            document.getElementById('regProgramOther').classList.add('hidden');
-            updateDashboard();
-            navigate('academic');
-        }
-
-        // --- ACADEMIC LIST LOGIC ---
+        // === RENDER LOGIC (Sama seperti sebelumnya, tapi baca dari variable global) ===
         function renderStudentList() {
             const q = document.getElementById('searchStudent').value.toLowerCase();
             const container = document.getElementById('studentListContainer');
-            
-            container.innerHTML = STUDENTS
-                .filter(s => s.name.toLowerCase().includes(q))
-                .map(s => {
-                    const statusClass = s.status === 'Aktif' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700';
-                    const attRate = s.attendance.length > 0 ? s.attendance.length + "x Hadir" : "Belum Absen";
-                    
-                    return `
-                    <div onclick="openStudentModal('${s.id}')" class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center cursor-pointer hover:bg-slate-50 transition relative overflow-hidden">
-                         ${s.status === 'Berhenti' ? '<div class="absolute inset-0 bg-slate-100/40 z-10 pointer-events-none"></div>' : ''}
-                        <div>
-                            <div class="flex items-center gap-2 mb-1">
-                                <h4 class="font-bold text-slate-800">${s.name}</h4>
-                                <span class="text-[10px] px-2 py-0.5 rounded font-bold ${statusClass}">${s.status}</span>
-                            </div>
-                            <p class="text-xs text-slate-500">${s.program}</p>
-                            <div class="flex gap-3 mt-2 text-[10px] text-slate-400">
-                                <span class="flex items-center gap-1"><i data-lucide="user" size="10"></i> ${s.parent}</span>
-                                <span class="flex items-center gap-1"><i data-lucide="clock" size="10"></i> ${attRate}</span>
-                            </div>
-                        </div>
-                        <div class="bg-slate-50 p-2 rounded-full text-slate-400">
-                            <i data-lucide="chevron-right" size="18"></i>
-                        </div>
+            if(STUDENTS.length === 0) { container.innerHTML = '<p class="text-center text-slate-400 text-sm mt-4">Belum ada data siswa.</p>'; return; }
+
+            container.innerHTML = STUDENTS.filter(s => s.name.toLowerCase().includes(q)).map(s => {
+                const statusColor = s.status === 'Aktif' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700';
+                return `<div onclick="openStudentModal('${s.id}')" class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center cursor-pointer hover:bg-slate-50 transition relative">
+                    ${s.status === 'Berhenti' ? '<div class="absolute inset-0 bg-slate-100/50 z-10"></div>' : ''}
+                    <div>
+                        <div class="flex items-center gap-2 mb-1"><h4 class="font-bold text-slate-800">${s.name}</h4><span class="text-[10px] px-2 py-0.5 rounded font-bold ${statusColor}">${s.status}</span></div>
+                        <p class="text-xs text-slate-500">${s.program}</p>
                     </div>
-                    `;
-                }).join('');
+                    <i data-lucide="chevron-right" class="text-slate-300" size="20"></i>
+                </div>`;
+            }).join('');
             lucide.createIcons();
         }
 
-        // --- STUDENT MODAL LOGIC ---
         function openStudentModal(id) {
             selectedStudentId = id;
             const s = STUDENTS.find(st => st.id === id);
-            
             document.getElementById('modalTitle').innerText = s.name;
             document.getElementById('modalSubtitle').innerText = `${s.program} • ${s.status}`;
             document.getElementById('editStatus').value = s.status;
-            
-            const progSel = document.getElementById('editProgram');
-            if (PRICES[s.program]) {
-                progSel.value = s.program;
-            } else {
-                progSel.value = "Lainnya"; 
-            }
-            
             document.getElementById('viewBirth').innerText = s.birth;
             document.getElementById('viewParent').innerText = s.parent;
             document.getElementById('viewJoin').innerText = s.joinDate;
-
+            
+            // Reset & Render Logs
             switchTab('profile');
-            renderAttendanceLog(s);
-            renderPaymentLog(s);
-
-            const suggestedPrice = PRICES[s.program] || 0;
-            document.getElementById('payAmount').value = suggestedPrice;
-
+            document.getElementById('attendanceList').innerHTML = s.attendance.map(a => `<div class="flex justify-between bg-slate-50 p-2 rounded text-xs border border-slate-100"><span>${a.date}</span><span class="font-bold">${a.status}</span></div>`).join('');
+            document.getElementById('paymentList').innerHTML = s.payments.map(p => `<div class="flex justify-between bg-slate-50 p-2 rounded text-xs border border-slate-100"><span>${p.date} (${p.note||'-'})</span><span class="font-bold text-green-600">+ Rp ${parseInt(p.amount).toLocaleString()}</span></div>`).join('');
+            
             document.getElementById('studentModal').classList.remove('hidden');
             document.getElementById('studentModal').classList.add('flex');
         }
-
-        function closeModal() {
-            document.getElementById('studentModal').classList.add('hidden');
-            document.getElementById('studentModal').classList.remove('flex');
+        
+        function closeModal() { document.getElementById('studentModal').classList.add('hidden'); document.getElementById('studentModal').classList.remove('flex'); }
+        function switchTab(t) { 
+            ['profile', 'attendance', 'payment'].forEach(x => { document.getElementById(`content-${x}`).classList.add('hidden'); document.getElementById(`tab-${x}`).classList.remove('active'); });
+            document.getElementById(`content-${t}`).classList.remove('hidden'); document.getElementById(`tab-${t}`).classList.add('active');
         }
 
-        function switchTab(tabName) {
-            ['profile', 'attendance', 'payment'].forEach(t => {
-                document.getElementById(`content-${t}`).classList.add('hidden');
-                document.getElementById(`tab-${t}`).classList.remove('active');
-            });
-            document.getElementById(`content-${tabName}`).classList.remove('hidden');
-            document.getElementById(`tab-${tabName}`).classList.add('active');
-        }
-
-        function saveStudentChanges() {
-            const s = STUDENTS.find(st => st.id === selectedStudentId);
-            const newStatus = document.getElementById('editStatus').value;
-            const newProg = document.getElementById('editProgram').value;
-            
-            s.status = newStatus;
-            
-            if(newProg !== "Lainnya" && newProg !== s.program) {
-                s.program = newProg;
-                document.getElementById('payAmount').value = PRICES[newProg] || 0;
-            }
-
-            document.getElementById('modalSubtitle').innerText = `${s.program} • ${s.status}`;
-            renderStudentList();
-            updateDashboard();
-        }
-
-        function submitAttendance(e) {
-            e.preventDefault();
-            const s = STUDENTS.find(st => st.id === selectedStudentId);
-            const status = document.getElementById('attStatus').value;
-            const date = document.getElementById('attDate').value;
-            
-            s.attendance.unshift({ date, status });
-            renderAttendanceLog(s);
-        }
-
-        function renderAttendanceLog(student) {
-            const container = document.getElementById('attendanceList');
-            if(student.attendance.length === 0) {
-                container.innerHTML = '<p class="text-xs text-slate-400 italic">Belum ada data absensi.</p>';
-                return;
-            }
-            container.innerHTML = student.attendance.map(a => {
-                let color = 'bg-slate-100 text-slate-600';
-                if(a.status === 'Hadir') color = 'bg-green-100 text-green-700';
-                if(a.status === 'Sakit') color = 'bg-blue-100 text-blue-700';
-                if(a.status === 'Alpha') color = 'bg-red-100 text-red-700';
-                return `
-                <div class="flex justify-between items-center bg-white border border-slate-100 p-2 rounded-lg text-xs">
-                    <span class="text-slate-500">${a.date}</span>
-                    <span class="font-bold px-2 py-0.5 rounded ${color}">${a.status}</span>
-                </div>
-                `;
-            }).join('');
-        }
-
-        function submitPayment(e) {
-            e.preventDefault();
-            const s = STUDENTS.find(st => st.id === selectedStudentId);
-            const date = document.getElementById('payDate').value;
-            const amount = parseInt(document.getElementById('payAmount').value);
-            const note = document.getElementById('payNote').value;
-
-            s.payments.unshift({ date, amount, note });
-            renderPaymentLog(s);
-            updateDashboard();
-        }
-
-        function renderPaymentLog(student) {
-            const container = document.getElementById('paymentList');
-            if(student.payments.length === 0) {
-                container.innerHTML = '<p class="text-xs text-slate-400 italic">Belum ada transaksi.</p>';
-                return;
-            }
-            container.innerHTML = student.payments.map(p => `
-                <div class="bg-white border border-slate-100 p-2 rounded-lg text-xs flex justify-between items-center">
-                    <div>
-                        <p class="font-bold text-slate-700">Rp ${p.amount.toLocaleString()}</p>
-                        <p class="text-slate-400 text-[10px]">${p.date} • ${p.note || '-'}</p>
-                    </div>
-                    <div class="bg-green-50 text-green-600 p-1 rounded">
-                        <i data-lucide="check" size="14"></i>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        // --- DASHBOARD & FINANCIAL LOGIC ---
         function updateDashboard() {
-            // 1. Stats Count
-            const activeCount = STUDENTS.filter(s => s.status === 'Aktif').length;
-            const stoppedCount = STUDENTS.filter(s => s.status === 'Berhenti').length;
+            const active = STUDENTS.filter(s => s.status === 'Aktif').length;
+            let rev = 0; STUDENTS.forEach(s => s.payments.forEach(p => rev += parseInt(p.amount)));
+            let exp = 0; EXPENSES.forEach(e => exp += parseInt(e.amount));
+            const profit = rev - exp;
+
+            document.getElementById('dashTotalStudents').innerText = active;
+            document.getElementById('dashTotalRevenue').innerText = "Rp " + rev.toLocaleString();
+            document.getElementById('rptTotalRevenue').innerText = "Rp " + rev.toLocaleString();
+            document.getElementById('rptTotalExpense').innerText = "Rp " + exp.toLocaleString();
+            document.getElementById('rptNetProfit').innerText = "Rp " + profit.toLocaleString();
+            document.getElementById('shareInvestor').innerText = "Rp " + (profit > 0 ? (profit*0.55).toLocaleString() : 0);
+            document.getElementById('shareOperator').innerText = "Rp " + (profit > 0 ? (profit*0.45).toLocaleString() : 0);
+
+            // Chart Logic (Simplified)
+            const mRev = [0,0,0,0,0,0], mData = {};
+            STUDENTS.forEach(s => s.payments.forEach(p => {
+                const m = new Date(p.date).getMonth(); if(m<6) mRev[m] += parseInt(p.amount);
+                mData[s.program] = (mData[s.program]||0) + parseInt(p.amount);
+            }));
             
-            // 2. Revenue Calculation
-            let totalRevenue = 0;
-            const monthlyRevenue = [0,0,0,0,0,0]; // Jan-Jun
-            const programRevenue = {};
-
-            STUDENTS.forEach(s => {
-                s.payments.forEach(p => {
-                    totalRevenue += p.amount;
-                    const m = new Date(p.date).getMonth();
-                    if(m < 6) monthlyRevenue[m] += p.amount;
-                    programRevenue[s.program] = (programRevenue[s.program] || 0) + p.amount;
-                });
-            });
-
-            // 3. Expense Calculation
-            let totalExpense = 0;
-            EXPENSES.forEach(e => {
-                totalExpense += e.amount;
-                // Subtract expense from monthly chart maybe? For now just revenue chart.
-            });
-
-            // 4. Profit Calculation
-            const netProfit = totalRevenue - totalExpense;
-            const shareInvestor = netProfit > 0 ? netProfit * 0.55 : 0;
-            const shareOperator = netProfit > 0 ? netProfit * 0.45 : 0;
-
-            // Update DOM Dashboard
-            document.getElementById('dashTotalStudents').innerText = activeCount;
-            // FIX: Use dashTotalRevenue instead of dashNetProfit because HTML uses dashTotalRevenue
-            document.getElementById('dashTotalRevenue').innerText = "Rp " + totalRevenue.toLocaleString('id-ID'); 
+            if(charts.line) charts.line.destroy();
+            charts.line = new Chart(document.getElementById('revenueLineChart'), { type: 'line', data: { labels: ['Jan','Feb','Mar','Apr','Mei','Jun'], datasets: [{ label: 'Pendapatan', data: mRev, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', fill: true, tension: 0.4 }] }, options: {plugins:{legend:false}, maintainAspectRatio:false} });
             
-            // Update DOM Report
-            document.getElementById('rptTotalRevenue').innerText = "Rp " + totalRevenue.toLocaleString('id-ID');
-            document.getElementById('rptTotalExpense').innerText = "Rp " + totalExpense.toLocaleString('id-ID');
-            document.getElementById('rptNetProfit').innerText = "Rp " + netProfit.toLocaleString('id-ID');
-            
-            document.getElementById('shareInvestor').innerText = "Rp " + shareInvestor.toLocaleString('id-ID');
-            document.getElementById('shareOperator').innerText = "Rp " + shareOperator.toLocaleString('id-ID');
-            
-            // rptActiveCount and rptInactiveCount elements removed in this version's HTML? 
-            // Let's check HTML. 
-            // The Investor section HTML in this response has:
-            // <span class="font-bold text-white text-lg" id="rptActiveCount">0</span>
-            // <span class="font-bold text-slate-500 text-lg" id="rptInactiveCount">0</span>
-            // So these are safe.
-
-            if (document.getElementById('rptActiveCount')) {
-                document.getElementById('rptActiveCount').innerText = activeCount;
-                document.getElementById('rptInactiveCount').innerText = stoppedCount;
-            }
-
-            renderCharts(monthlyRevenue, programRevenue);
+            if(charts.pie) charts.pie.destroy();
+            charts.pie = new Chart(document.getElementById('programPieChart'), { type: 'doughnut', data: { labels: Object.keys(mData), datasets: [{ data: Object.values(mData), backgroundColor: ['#f97316','#0ea5e9','#8b5cf6','#10b981','#f43f5e'] }] }, options: {plugins:{legend:{position:'right',labels:{boxWidth:10,font:{size:10}}}}, maintainAspectRatio:false} });
         }
 
         function renderFinancialLogs() {
-            // Render Pemasukan
-            const tbodyInc = document.getElementById('transactionTableBody');
-            let allInc = [];
-            STUDENTS.forEach(s => {
-                s.payments.forEach(p => allInc.push({...p, student: s.name, program: s.program}));
-            });
-            allInc.sort((a,b) => new Date(b.date) - new Date(a.date));
-
-            tbodyInc.innerHTML = allInc.map(p => `
-                <tr class="hover:bg-slate-50 transition">
-                    <td class="p-3 whitespace-nowrap">${p.date}</td>
-                    <td class="p-3 font-bold text-slate-700">${p.student}</td>
-                    <td class="p-3 text-right font-bold text-green-600">+ Rp ${p.amount.toLocaleString()}</td>
-                </tr>
-            `).join('');
-
-            // Render Pengeluaran
-            const tbodyExp = document.getElementById('expenseTableBody');
-            EXPENSES.sort((a,b) => new Date(b.date) - new Date(a.date));
+            // Expenses
+            document.getElementById('expenseTableBody').innerHTML = EXPENSES.map(e => `<tr class="border-b border-slate-50"><td class="p-3">${e.date}</td><td class="p-3">${e.category}<br><span class="text-[10px] text-slate-400">${e.desc}</span></td><td class="p-3 text-right font-bold text-red-500">- Rp ${parseInt(e.amount).toLocaleString()}</td></tr>`).join('');
             
-            tbodyExp.innerHTML = EXPENSES.map(e => `
-                <tr class="hover:bg-slate-50 transition">
-                    <td class="p-3 whitespace-nowrap">${e.date}</td>
-                    <td class="p-3">
-                        <span class="block font-bold text-slate-700">${e.category}</span>
-                        <span class="text-[10px] text-slate-500">${e.desc}</span>
-                    </td>
-                    <td class="p-3 text-right font-bold text-red-500">- Rp ${e.amount.toLocaleString()}</td>
-                </tr>
-            `).join('');
-        }
-
-        function renderCharts(revData, progData) {
-            if(charts.line) charts.line.destroy();
-            charts.line = new Chart(document.getElementById('revenueLineChart'), {
-                type: 'line',
-                data: {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
-                    datasets: [{
-                        label: 'Pendapatan',
-                        data: revData,
-                        borderColor: '#22c55e',
-                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                        fill: true, tension: 0.4
-                    }]
-                },
-                options: { plugins: { legend: { display: false } }, maintainAspectRatio: false }
-            });
-
-            if(charts.pie) charts.pie.destroy();
-            charts.pie = new Chart(document.getElementById('programPieChart'), {
-                type: 'doughnut',
-                data: {
-                    labels: Object.keys(progData),
-                    datasets: [{
-                        data: Object.values(progData),
-                        backgroundColor: ['#f97316', '#0ea5e9', '#8b5cf6', '#10b981', '#f43f5e']
-                    }]
-                },
-                options: { plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: {size: 10} } } }, maintainAspectRatio: false }
-            });
-        }
-
-        function downloadCSV() {
-            let csv = "JENIS,TANGGAL,KETERANGAN,NOMINAL\n";
-            // Pemasukan
-            STUDENTS.forEach(s => {
-                s.payments.forEach(p => csv += `PEMASUKAN,${p.date},${s.name} (${s.program}),${p.amount}\n`);
-            });
-            // Pengeluaran
-            EXPENSES.forEach(e => csv += `PENGELUARAN,${e.date},${e.category} - ${e.desc},-${e.amount}\n`);
-            
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = 'Laporan_Keuangan_Lengkap.csv';
-            a.click();
+            // Incomes (Flatten)
+            let inc = [];
+            STUDENTS.forEach(s => s.payments.forEach(p => inc.push({d:p.date, n:s.name, a:p.amount})));
+            inc.sort((a,b)=>new Date(b.d)-new Date(a.d));
+            document.getElementById('transactionTableBody').innerHTML = inc.map(i => `<tr class="border-b border-slate-50"><td class="p-3">${i.d}</td><td class="p-3">${i.n}</td><td class="p-3 text-right font-bold text-green-600">+ Rp ${parseInt(i.a).toLocaleString()}</td></tr>`).join('');
         }
     </script>
 </body>
